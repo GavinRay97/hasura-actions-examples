@@ -1,0 +1,34 @@
+version: '3.6'
+services:
+  flask-api:
+    build: ./src
+    ports: ['5000:5000']
+    volumes: ['./src:/app']
+
+  postgres:
+    image: postgres
+    container_name: postgres
+    ports:
+      - '5430:5432'
+    restart: always
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: root
+
+  graphql-engine:
+    image: hasura/graphql-engine:v1.2.1
+    container_name: graphql-engine
+    ports:
+      - '8080:8080'
+    depends_on:
+      - 'postgres'
+    restart: always
+    environment:
+      HASURA_GRAPHQL_DATABASE_URL: postgres://postgres:root@postgres:5432/postgres
+      HASURA_GRAPHQL_ACTION_BASEURL: http://host.docker.internal:3000/api
+      HASURA_GRAPHQL_ENABLE_CONSOLE: 'true'
+      HASURA_GRAPHQL_ENABLED_LOG_TYPES: startup, http-log, webhook-log, websocket-log, query-log
+
+volumes:
+  db_data:

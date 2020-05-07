@@ -1,0 +1,16 @@
+actions:
+- name: Login
+  definition:
+    kind: ""
+    handler: http://flask-api:5000/login
+- name: Signup
+  definition:
+    kind: synchronous
+    handler: http://flask-api:5000/signup
+custom_types:
+  enums: []
+  input_objects: []
+  objects:
+  - name: CreateUserOutput
+  - name: JsonWebToken
+  scalars: []

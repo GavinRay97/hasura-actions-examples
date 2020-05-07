@@ -1,0 +1,4 @@
+flask
+requests
+pyjwt
+argon2-cffi
