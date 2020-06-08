@@ -30,7 +30,7 @@ module Queries
   GRAPHQL
 
   CreateUserMutation = <<~GRAPHQL
-    mutation X($email: String!, $password: String!) {
+    mutation ($email: String!, $password: String!) {
       insert_user_one(object: {email: $email, password: $password}) {
         id
         email

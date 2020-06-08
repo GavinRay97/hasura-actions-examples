@@ -4,14 +4,6 @@ import jwt
 HASURA_JWT_SECRET = os.getenv("HASURA_GRAPHQL_JWT_SECRET", "a-very-secret-secret")
 
 
-def extract(result: dict, key: str, single: bool = False):
-    """
-    Utility function for extracting & formatting results from Hasura GraphQL requests
-    """
-    value = result["data"][key]
-    return value[0] if single else value
-
-
 # ROLE LOGIC FOR DEMO PURPOSES ONLY
 # NOT AT ALL SUITABLE FOR A REAL APP
 def generate_token(user) -> str:

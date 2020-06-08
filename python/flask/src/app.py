@@ -1,12 +1,14 @@
 # Insider Docker container, print does not function properly
 # Use logging.warning()
+import json
 import logging
 from utils import extract, generate_token
 from graphql_client import Client
 from flask import Flask, request, jsonify
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
-
+from typing import Optional
+from dataclasses import dataclass, asdict
 
 HASURA_URL = "http://graphql-engine:8080/v1/graphql"
 HASURA_HEADERS = {"X-Hasura-Admin-Secret": "your-secret"}
@@ -31,31 +33,61 @@ def rehash_and_save_password_if_needed(user, plaintext_password):
 app = Flask(__name__)
 
 
+@dataclass
+class RequestMixin:
+    @classmethod
+    def from_request(cls, request):
+        """
+        Helper method to convert an HTTP request to Dataclass Instance
+        """
+        values = request.get("input")
+        return cls(**values)
+
+    def to_json(self):
+        return json.dumps(asdict(self))
+
+
+@dataclass
+class CreateUserOutput(RequestMixin):
+    id: int
+    email: str
+    password: str
+
+
+@dataclass
+class JsonWebToken(RequestMixin):
+    token: str
+
+
+@dataclass
+class AuthArgs(RequestMixin):
+    email: str
+    password: str
+
+
 @app.route("/signup", methods=["POST"])
 def signup_handler():
-    values = request.get_json().get("input")
-    (email, password) = (values["email"], values["password"])
-    hashed_password = Password.hash(password)
-    user_response = client.create_user(email, hashed_password)
+    args = AuthArgs.from_request(request.get_json())
+    hashed_password = Password.hash(args.password)
+    user_response = client.create_user(args.email, hashed_password)
     if user_response.get("errors"):
-        return user_response
+        return {"message": user_response["errors"][0]["message"]}, 400
     else:
-        user = extract(user_response, "insert_user_one")
-        return user
+        user = user_response["data"]["insert_user_one"]
+        return CreateUserOutput(**user).to_json()
 
 
 @app.route("/login", methods=["POST"])
 def login_handler():
-    values = request.get_json().get("input")
-    (email, password) = (values["email"], values["password"])
-    user_response = client.find_user_by_email(email)
-    user = extract(user_response, "user", single=True)
+    args = AuthArgs.from_request(request.get_json())
+    user_response = client.find_user_by_email(args.email)
+    user = user_response["data"]["user"][0]
     try:
-        Password.verify(user.get("password"), password)
-        rehash_and_save_password_if_needed(user, password)
-        return {"token": generate_token(user)}
+        Password.verify(user.get("password"), args.password)
+        rehash_and_save_password_if_needed(user, args.password)
+        return JsonWebToken(generate_token(user)).to_json()
     except VerifyMismatchError:
-        return "Error: wrong password"
+        return {"message": "Invalid credentials"}, 401
 
 
 if __name__ == "__main__":
